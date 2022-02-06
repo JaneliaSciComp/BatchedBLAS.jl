@@ -214,8 +214,8 @@ end
     ger!(alpha, x, y, A)
 
 In-place rank-1 update of matrix `A` with vectors `x` and `y` as
-`alpha[k]*x[:,k]*transpose(y[:,k]) + A[:,:,k]`.`alpha` can be also be
-a scalar.
+`alpha[k]*x[:,k]*transpose(y[:,k]) + A[:,:,k]` for all `k`.  `alpha` can
+be also be a scalar.
 """
 function batched_ger!(alpha::T, x::CuMatrix{T}, y::CuMatrix{T}, A::CuArray{T}) where T
 
@@ -259,8 +259,8 @@ end
     syr!(uplo, alpha, x, A)
 
 In-place rank-1 update of symmetric matrix `A` with vector `x` as
-`alpha[k]*x[:,k]*transpose(x[:,k]) + A[:,:,k]`.  Only the `uplo` (either
-'U' or 'L') triangle of `A` is used.  `alpha` can be also be a scalar.
+`alpha[k]*x[:,k]*transpose(x[:,k]) + A[:,:,k]` for all `k`.  Only the `uplo`
+(either 'U' or 'L') triangle of `A` is used.  `alpha` can be also be a scalar.
 """
 function batched_syr!(uplo::AbstractChar, alpha::T, x::CuMatrix{T}, A::CuArray{T}) where T
 
@@ -328,10 +328,10 @@ end
 """
     spr!(uplo, alpha, x, A)
 
-In-place rank-1 update of packed symmetric matrix `A` with vector `x` as
-`alpha[k]*x[:,k]*transpose(x[:,k]) + A[:,:,k]`.  `uplo` specifies whether
-the upper ('U') or lower ('L') triangle was packed.  `alpha` can be also be
-a scalar.
+In-place rank-1 update of packed symmetric matrix `A` with vector `x`
+as `alpha[k]*x[:,k]*transpose(x[:,k]) + A[:,:,k]` for all `k`.  `uplo`
+specifies whether the upper ('U') or lower ('L') triangle was packed.
+`alpha` can be also be a scalar.
 """
 function batched_spr!(uplo::AbstractChar, alpha::T, x::CuMatrix{T}, A::CuMatrix{T}) where T
 
