@@ -1,4 +1,4 @@
-name = "BatchedCuBLAS"
+name = "BatchedBLAS"
 uuid = "dfa6e8bd-ffa5-4347-817a-aa08eb84b250"
 authors = ["Ben Arthur <arthurb@hhmi.org>"]
 version = "0.1.0"

@@ -1,5 +1,5 @@
 Nvidia only provides batched versions of the BLAS `gemm` and `trsm` functions.
-BatchedCuBLAS.jl extends support for batched arrays by (currently) providing
+BatchedBLAS.jl extends support for batched arrays by (currently) providing
 batched versions of `dot`, `gemv`, `symv`, `spmv`, `ger`, `syr`, and `spr`.
 
 The main benefit is for symmetric and packed symmetric matrices, where
@@ -13,7 +13,7 @@ Lower numbers are better.
 Example usage:
 
 ```
-julia> using CUDA, SymmetricFormats, BatchedCuBLAS
+julia> using CUDA, SymmetricFormats, BatchedBLAS
 
 julia> L = 4  # the matrix size
 4

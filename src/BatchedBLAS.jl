@@ -1,4 +1,4 @@
-module BatchedCuBLAS
+module BatchedBLAS
 
 using CUDA
 

@@ -1,4 +1,4 @@
-using BatchedCuBLAS, Test, CUDA, LinearAlgebra, SymmetricFormats
+using BatchedBLAS, Test, CUDA, LinearAlgebra, SymmetricFormats
 
 L=16; N=4
 A = reshape(1.0:L*L*N, L,L,N);

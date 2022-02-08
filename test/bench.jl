@@ -1,4 +1,4 @@
-using LinearAlgebra, CUDA, NNlib, NNlibCUDA, BatchedCuBLAS, SymmetricFormats, BenchmarkTools, DataFrames, Gadfly, JLD2
+using LinearAlgebra, CUDA, NNlib, NNlibCUDA, BatchedBLAS, SymmetricFormats, BenchmarkTools, DataFrames, Gadfly, JLD2
 
 macro belapsed_median(args...)
     return esc(quote
