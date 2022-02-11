@@ -5,3 +5,7 @@ version = "0.1.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+
+[compat]
+julia = "1.7"
+CUDA = "3"
