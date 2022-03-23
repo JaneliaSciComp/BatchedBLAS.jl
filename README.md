@@ -1,12 +1,14 @@
 Nvidia only provides batched versions of the BLAS `gemm` and `trsm` functions.
-BatchedBLAS.jl extends support for batched arrays by (currently) providing
-batched versions of `dot`, `gemv`, `symv`, `spmv`, `ger`, `syr`, and `spr`.
+Further, they only support floating point.  BatchedBLAS.jl extends support
+for batched arrays by (currently) providing batched versions of `dot`,
+`gemv`, `symv`, `spmv`, `ger`, `syr`, and `spr` that work with AbstractFloats
+and Integers.
 
-The main benefit is for symmetric and packed symmetric matrices, where
-performance for `syr` and `spr` exceeds that of the equivalent batched `gemm`.
-Benchmarks on an A100 follow.  The dashed lines are for the transposed
-version of `gemv` and the upper-triangle versions of all other functions.
-Lower numbers are better.
+The main performance benefit is for symmetric and packed symmetric matrices,
+where execution times for `syr` and `spr` are faster than the equivalent
+batched `gemm`.  Benchmarks on an A100 follow.  The dashed lines are for
+the transposed version of `gemv` and the upper-triangle versions of all
+other functions.  Lower numbers are better.
 
 ![benchmarks](/test/bench.svg)
 
