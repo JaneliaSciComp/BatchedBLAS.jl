@@ -7,149 +7,109 @@ APL = hcat([SymmetricPacked(x, :L).tri for x in eachslice(A, dims=3)]...);
 x = reshape(1.0:L*N, L,N);
 y = reshape(L*N:-1:1.0, L,N);
 o = collect(1.0:N);
-alpha = beta = 0.5
-alpha1 = range(0,1,N)
+alpha_scalar = beta_scalar = 0.5
+alpha_vector = range(0,1,N)
+beta_vector = range(1,0,N)
+cualpha_vector = CuArray(alpha_vector)
+cubeta_vector = CuArray(beta_vector)
 
-o_cpu=copy(o);
-for i=1:N
-    o_cpu[i] = x[:,i]' * y[:,i]
-end
-o_gpu=CuArray(o);
-batched_dot!(o_gpu, CuArray(x), CuArray(y))
-@test isapprox(o_cpu, Array(o_gpu))
+test_equality(::Type{<:Integer}, cpu, gpu) = @test maximum(abs.(cpu-Array(gpu))) < 1
+test_equality(::Type{<:AbstractFloat}, cpu, gpu) = @test isapprox(cpu, Array(gpu))
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.gemv!('N', alpha, A[:,:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_gemv!('N', alpha, CuArray(A), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+test_types = (Float64, Int32)
+@testset "A=$TAo, x=$Tx, y=$Ty, α=$Talpha, β=$Tbeta" for
+         TAo in test_types, Tx in test_types, Ty in test_types,
+         Talpha in (Float64, Vector{Float64}), Tbeta in (Float64, Vector{Float64})
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.gemv!('T', alpha, A[:,:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_gemv!('T', alpha, CuArray(A), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+    cuA = CuArray{TAo}(A)
+    cuAPU = CuArray{TAo}(APU)
+    cuAPL = CuArray{TAo}(APL)
+    cux = CuArray{Tx}(x)
+    cuy = CuArray{Ty}(y)
+    cuo = CuArray{TAo}(o)
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.gemv!('C', alpha, A[:,:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_gemv!('C', alpha, CuArray(A), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+    @testset "dot!" begin
+        o_cpu=copy(o);
+        @views for i=1:N
+            o_cpu[i] = x[:,i]' * y[:,i]
+        end
+        o_gpu=copy(cuo);
+        batched_dot!(o_gpu, cux, cuy)
+        test_equality(TAo, o_cpu, o_gpu)
+    end
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.symv!('U', alpha, A[:,:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_symv!('U', alpha, CuArray(A), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+    @testset "gemv!" for trans in ['N', 'T', 'C']
+        y_cpu=copy(y);
+        for i=1:N
+            thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
+            thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
+            BLAS.gemv!(trans, thisalpha, A[:,:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+        end
+        y_gpu=copy(cuy);
+        thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
+        thisbeta = Tbeta<:Vector ? cubeta_vector : beta_scalar
+        batched_gemv!(trans, thisalpha, cuA, cux, thisbeta, y_gpu)
+        test_equality(Ty, y_cpu, Array(y_gpu))
+    end
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.symv!('L', alpha, A[:,:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_symv!('L', alpha, CuArray(A), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+    @testset "symv! & spmv!" for uplo in ['U', 'L']
+        y_cpu=copy(y);
+        for i=1:N
+            thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
+            thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
+            BLAS.symv!(uplo, thisalpha, A[:,:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+        end
+        y_gpu=copy(cuy);
+        thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
+        thisbeta = Tbeta<:Vector ? cubeta_vector : beta_scalar
+        batched_symv!(uplo, thisalpha, cuA, cux, thisbeta, y_gpu)
+        test_equality(Ty, y_cpu, Array(y_gpu))
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.spmv!('U', alpha, APU[:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_spmv!('U', alpha, CuArray(APU), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+        y_cpu=copy(y);
+        for i=1:N
+            thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
+            thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
+            BLAS.spmv!(uplo, thisalpha, APU[:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+        end
+        y_gpu=copy(cuy);
+        thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
+        thisbeta = Tbeta<:Vector ? cubeta_vector : beta_scalar
+        batched_spmv!(uplo, thisalpha, cuAPU, cux, thisbeta, y_gpu)
+        test_equality(Ty, y_cpu, Array(y_gpu))
+    end
 
-y_cpu=copy(y);
-for i=1:N
-    BLAS.spmv!('L', alpha, APL[:,i], x[:,i], beta, @view y_cpu[:,i])
-end
-y_gpu=CuArray(y);
-batched_spmv!('L', alpha, CuArray(APL), CuArray(x), beta, y_gpu)
-@test isapprox(y_cpu, Array(y_gpu))
+    @testset "ger!" begin
+        A_cpu=copy(A);
+        for i=1:N
+            thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
+            BLAS.ger!(thisalpha, x[:,i], y[:,i], @view A_cpu[:,:,i])
+        end
+        A_gpu=copy(cuA);
+        thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
+        batched_ger!(thisalpha, cux, cuy, A_gpu)
+        test_equality(TAo, A_cpu, Array(A_gpu))
+    end
 
-A_cpu=copy(A);
-for i=1:N
-    BLAS.ger!(alpha, x[:,i], y[:,i], @view A_cpu[:,:,i])
-end
-A_gpu=CuArray(A);
-batched_ger!(alpha, CuArray(x), CuArray(y), A_gpu)
-@test isapprox(A_cpu, Array(A_gpu))
+    @testset "syr! & spr!" for uplo in ['U', 'L']
+        A_cpu=copy(A);
+        for i=1:N
+            thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
+            BLAS.syr!(uplo, thisalpha, x[:,i], @view A_cpu[:,:,i])
+        end
+        A_gpu=copy(cuA);
+        thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
+        batched_syr!(uplo, thisalpha, cux, A_gpu)
+        test_equality(TAo, A_cpu, Array(A_gpu))
 
-A_cpu=copy(A);
-for i=1:N
-    BLAS.ger!(alpha1[i], x[:,i], y[:,i], @view A_cpu[:,:,i])
-end
-A_gpu=CuArray(A);
-batched_ger!(CuArray(alpha1), CuArray(x), CuArray(y), A_gpu)
-@test isapprox(A_cpu, Array(A_gpu))
+        APU_cpu=copy(APU);
+        for i=1:N
+            thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
+            spr!(uplo, thisalpha, x[:,i], @view APU_cpu[:,i])
+        end
+        APU_gpu=copy(cuAPU);
+        thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
+        batched_spr!(uplo, thisalpha, cux, APU_gpu)
+        test_equality(TAo, APU_cpu, Array(APU_gpu))
+    end
 
-A_cpu=copy(A);
-for i=1:N
-    BLAS.syr!('U', alpha, x[:,i], @view A_cpu[:,:,i])
 end
-A_gpu=CuArray(A);
-batched_syr!('U', alpha, CuArray(x), A_gpu)
-@test isapprox(A_cpu, Array(A_gpu))
-
-A_cpu=copy(A);
-for i=1:N
-    BLAS.syr!('L', alpha, x[:,i], @view A_cpu[:,:,i])
-end
-A_gpu=CuArray(A);
-batched_syr!('L', alpha, CuArray(x), A_gpu)
-@test isapprox(A_cpu, Array(A_gpu))
-
-A_cpu=copy(A);
-for i=1:N
-    BLAS.syr!('U', alpha1[i], x[:,i], @view A_cpu[:,:,i])
-end
-A_gpu=CuArray(A);
-batched_syr!('U', CuArray(alpha1), CuArray(x), A_gpu)
-@test isapprox(A_cpu, Array(A_gpu))
-
-A_cpu=copy(A);
-for i=1:N
-    BLAS.syr!('L', alpha1[i], x[:,i], @view A_cpu[:,:,i])
-end
-A_gpu=CuArray(A);
-batched_syr!('L', CuArray(alpha1), CuArray(x), A_gpu)
-@test isapprox(A_cpu, Array(A_gpu))
-
-APU_cpu=copy(APU);
-for i=1:N
-    spr!('U', alpha, x[:,i], @view APU_cpu[:,i])
-end
-APU_gpu=CuArray(APU);
-batched_spr!('U', alpha, CuArray(x), APU_gpu)
-@test isapprox(APU_cpu, Array(APU_gpu))
-
-APL_cpu=copy(APL);
-for i=1:N
-    spr!('L', alpha, x[:,i], @view APL_cpu[:,i])
-end
-APL_gpu=CuArray(APL);
-batched_spr!('L', alpha, CuArray(x), APL_gpu)
-@test isapprox(APL_cpu, Array(APL_gpu))
-
-APU_cpu=copy(APU);
-for i=1:N
-    spr!('U', alpha1[i], x[:,i], @view APU_cpu[:,i])
-end
-APU_gpu=CuArray(APU);
-batched_spr!('U', CuArray(alpha1), CuArray(x), APU_gpu)
-@test isapprox(APU_cpu, Array(APU_gpu))
-
-APL_cpu=copy(APL);
-for i=1:N
-    spr!('L', alpha1[i], x[:,i], @view APL_cpu[:,i])
-end
-APL_gpu=CuArray(APL);
-batched_spr!('L', CuArray(alpha1), CuArray(x), APL_gpu)
-@test isapprox(APL_cpu, Array(APL_gpu))
