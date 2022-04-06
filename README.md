@@ -2,10 +2,10 @@ Nvidia only provides batched versions of the BLAS `gemm` and `trsm` functions.
 Further, they only support floating point, and alpha and beta can only be
 scalars.  BatchedBLAS.jl extends support for batched arrays by (currently)
 providing batched versions of `dot`, `gemv`, `symv`, `spmv`, `ger`, `syr`,
-and `spr` that work with arrays of AbstractFloats and Integers and scaling
-coefficients which are scalars or Vectors.
+and `spr` that work with arrays of AbstractFloats and Integers, and scaling
+coefficients which can be scalars or Vectors.
 
-In addition the type flexibility, there is a performance benefit for
+In addition to the type flexibility, there is a performance benefit for
 symmetric and packed symmetric matrices, where execution times for `syr`
 and `spr` are faster than the equivalent batched `gemm`.  Benchmarks on an
 A100 follow.  The dashed lines are for the transposed version of `gemv` and
