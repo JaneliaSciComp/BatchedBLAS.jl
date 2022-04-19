@@ -8,8 +8,8 @@ x = reshape(1.0:L*N, L,N);
 y = reshape(L*N:-1:1.0, L,N);
 o = collect(1.0:N);
 alpha_scalar = beta_scalar = 0.5
-alpha_vector = range(0,1,N)
-beta_vector = range(1,0,N)
+alpha_vector = range(0,1, length=N)
+beta_vector = range(1,0, length=N)
 cualpha_vector = CuArray(alpha_vector)
 cubeta_vector = CuArray(beta_vector)
 
