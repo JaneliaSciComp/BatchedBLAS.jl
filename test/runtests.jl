@@ -1,4 +1,4 @@
-using BatchedBLAS, Test, CUDA, LinearAlgebra, SymmetricFormats
+using BatchedBLAS, Test, CUDA, LinearAlgebra, LinearAlgebra.BLAS, SymmetricFormats
 
 L=16; N=4
 A = reshape(1.0:L*L*N, L,L,N);
@@ -43,7 +43,7 @@ test_types = (Float64, Int32)
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
             thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
-            BLAS.gemv!(trans, thisalpha, A[:,:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+            gemv!(trans, thisalpha, A[:,:,i], x[:,i], thisbeta, @view y_cpu[:,i])
         end
         y_gpu=copy(cuy);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
@@ -57,7 +57,7 @@ test_types = (Float64, Int32)
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
             thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
-            BLAS.symv!(uplo, thisalpha, A[:,:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+            symv!(uplo, thisalpha, A[:,:,i], x[:,i], thisbeta, @view y_cpu[:,i])
         end
         y_gpu=copy(cuy);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
@@ -69,7 +69,7 @@ test_types = (Float64, Int32)
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
             thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
-            BLAS.spmv!(uplo, thisalpha, APU[:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+            spmv!(uplo, thisalpha, APU[:,i], x[:,i], thisbeta, @view y_cpu[:,i])
         end
         y_gpu=copy(cuy);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
@@ -82,7 +82,7 @@ test_types = (Float64, Int32)
         A_cpu=copy(A);
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
-            BLAS.ger!(thisalpha, x[:,i], y[:,i], @view A_cpu[:,:,i])
+            ger!(thisalpha, x[:,i], y[:,i], @view A_cpu[:,:,i])
         end
         A_gpu=copy(cuA);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
@@ -94,7 +94,7 @@ test_types = (Float64, Int32)
         A_cpu=copy(A);
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
-            BLAS.syr!(uplo, thisalpha, x[:,i], @view A_cpu[:,:,i])
+            syr!(uplo, thisalpha, x[:,i], @view A_cpu[:,:,i])
         end
         A_gpu=copy(cuA);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
