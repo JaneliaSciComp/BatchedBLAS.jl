@@ -30,7 +30,7 @@ end
 """
     batched_dot!(o, x, y)
 
-In-place batched vector-vector multiplication, equivalent to `o[:,k] =
+In-place batched vector-vector multiplication, equivalent to `o[k] =
 transpose(x[:,k]) * y[:,k]` for all `k`.  All inputs can have eltypes of
 either AbstractFloats or Integers.
 """
@@ -80,7 +80,7 @@ function batched_gemv!(tA::AbstractChar,
             @inbounds if k<=size(y,2) && i<=size(y,1)
                 tmp = T(0)
                 for j=1:size(x,1)
-                    tmp += A[i,j,k] * x[j,k]
+                    tmp += A[i,j,k] * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -90,7 +90,7 @@ function batched_gemv!(tA::AbstractChar,
             @inbounds if k<=size(y,2) && i<=size(y,1)
                 tmp = T(0)
                 for j=1:size(x,1)
-                    tmp += A[j,i,k] * x[j,k]
+                    tmp += A[j,i,k] * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -100,7 +100,7 @@ function batched_gemv!(tA::AbstractChar,
             @inbounds if k<=size(y,2) && i<=size(y,1)
                 tmp = T(0)
                 for j=1:size(x,1)
-                    tmp += adjoint(A[j,i,k]) * x[j,k]
+                    tmp += adjoint(A[j,i,k]) * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -112,7 +112,7 @@ function batched_gemv!(tA::AbstractChar,
         return nothing
     end
 
-    T = promote_type(TA, Tx, Ty)
+    T = promote_type(eltype(Talpha), TA, Tx, eltype(Tbeta), Ty)
     kernel = @cuda name="batched_gemv!" launch=false kernel(T, tA, alpha, A, x, beta, y)
     config = launch_configuration(kernel.fun)
     threads, blocks = configurator(config, size(y,1), size(y,2))
@@ -145,7 +145,7 @@ function batched_symv!(uplo::AbstractChar,
                 tmp = T(0)
                 for j=1:size(x,1)
                     ijmin,ijmax = minmax(i,j)
-                    tmp += A[ijmin,ijmax,k] * x[j,k]
+                    tmp += A[ijmin,ijmax,k] * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -156,7 +156,7 @@ function batched_symv!(uplo::AbstractChar,
                 tmp = T(0)
                 for j=1:size(x,1)
                     ijmin,ijmax = minmax(i,j)
-                    tmp += A[ijmax,ijmin,k] * x[j,k]
+                    tmp += A[ijmax,ijmin,k] * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -168,7 +168,7 @@ function batched_symv!(uplo::AbstractChar,
         return nothing
     end
 
-    T = promote_type(TA, Tx, Ty)
+    T = promote_type(eltype(Talpha), TA, Tx, eltype(Tbeta), Ty)
     kernel = @cuda name="batched_symv!" launch=false kernel(T, uplo, alpha, A, x, beta, y)
     config = launch_configuration(kernel.fun)
     threads, blocks = configurator(config, size(y,1), size(y,2))
@@ -202,7 +202,7 @@ function batched_spmv!(uplo::AbstractChar,
                 for j=1:size(x,1)
                     ijmin,ijmax = minmax(i,j)
                     h = ijmin+(ijmax*(ijmax-1))>>1
-                    tmp += A[h,k] * x[j,k]
+                    tmp += A[h,k] * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -215,7 +215,7 @@ function batched_spmv!(uplo::AbstractChar,
                 for j=1:size(x,1)
                     ijmin,ijmax = minmax(i,j)
                     h = ijmax+((2n-ijmin)*(ijmin-1))>>1
-                    tmp += A[h,k] * x[j,k]
+                    tmp += A[h,k] * T(x[j,k])
                 end
                 thisalpha = Talpha<:CuVector ? alpha[k] : alpha
                 thisbeta = Tbeta<:CuVector ? beta[k] : beta
@@ -227,7 +227,7 @@ function batched_spmv!(uplo::AbstractChar,
         return nothing
     end
 
-    T = promote_type(TA, Tx, Ty)
+    T = promote_type(eltype(Talpha), TA, Tx, eltype(Tbeta), Ty)
     kernel = @cuda name="batched_spmv!" launch=false kernel(T, uplo, alpha, A, x, beta, y)
     config = launch_configuration(kernel.fun)
     threads, blocks = configurator(config, size(y,1), size(y,2))
