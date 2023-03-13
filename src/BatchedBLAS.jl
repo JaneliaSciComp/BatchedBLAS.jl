@@ -37,7 +37,7 @@ either AbstractFloats or Integers.
 function batched_dot!(o::CuVector{To}, x::CuMatrix{Tx}, y::CuMatrix{Ty}) where {
                           To<:IntOrFloat, Tx<:IntOrFloat, Ty<:IntOrFloat}
 
-    function kernel(T, o, x, y)
+    function kernel(::Type{T}, o, x, y) where T
         k = threadIdx().x + (blockIdx().x - 1) * blockDim().x
 
         @inbounds if k<=size(x,2)
@@ -74,7 +74,7 @@ function batched_gemv!(tA::AbstractChar,
                            Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                            Ty<:IntOrFloat}
 
-    function kernel(T, tA, alpha, A, x, beta, y)
+    function kernel(::Type{T}, tA, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         k = threadIdx().y + (blockIdx().y - 1) * blockDim().y
 
@@ -138,7 +138,7 @@ function batched_symv!(uplo::AbstractChar,
                            Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                            Ty<:IntOrFloat}
 
-    function kernel(T, uplo, alpha, A, x, beta, y)
+    function kernel(::Type{T}, uplo, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         k = threadIdx().y + (blockIdx().y - 1) * blockDim().y
 
@@ -194,7 +194,7 @@ function batched_spmv!(uplo::AbstractChar,
                          Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                          Ty<:IntOrFloat}
 
-    function kernel(T, uplo, alpha, A, x, beta, y)
+    function kernel(::Type{T}, uplo, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         k = threadIdx().y + (blockIdx().y - 1) * blockDim().y
 
