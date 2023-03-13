@@ -41,11 +41,13 @@ function batched_dot!(o::CuVector{To}, x::CuMatrix{Tx}, y::CuMatrix{Ty}) where {
         k = threadIdx().x + (blockIdx().x - 1) * blockDim().x
 
         @inbounds if k<=size(x,2)
-            o[k] = 0
+            tmp = T(0)
             for i=1:size(x,1)
-                o[k] += maybe_cast(To, x[i,k] * y[i,k])
+                tmp += x[i,k] * T(y[i,k])
             end
+            o[k] = maybe_cast(To, tmp)
         end
+        return nothing
     end
 
     T = promote_type(To, Tx, Ty)
