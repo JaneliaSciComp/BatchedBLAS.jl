@@ -1,9 +1,8 @@
-using LinearAlgebra, CUDA, NNlib, NNlibCUDA, BatchedBLAS, SymmetricFormats, BenchmarkTools, DataFrames, Gadfly, JLD2
+using LinearAlgebra, BatchedBLAS, NNlib, SymmetricFormats, BenchmarkTools, DataFrames, Gadfly, JLD2
+using KernelAbstractions, CUDA, NNlibCUDA
 
 macro belapsed_median(args...)
-    return esc(quote
-        $BenchmarkTools.time($BenchmarkTools.median($BenchmarkTools.@benchmark $(args...)))/1e9
-    end)
+    esc(:(time(median(@benchmark $(args...))) / 1e9))
 end
 
 
@@ -16,19 +15,20 @@ function doit(L,N)
     o3 = CuArray(rand(1,1,N));
 
     tbgemm = @belapsed_median CUDA.@sync batched_mul!($o3, batched_transpose($x3), $y3)
-
     tbdot = @belapsed_median CUDA.@sync batched_dot!($o1, $x2, $y2)
 
     CUDA.unsafe_free!.((x2, x3, y2, y3, o1, o3))
-    CUDA.memory_status();  println("\n")
+    CUDA.memory_status()
 
     return tbgemm, tbdot
 end
 
 df_b_dot = DataFrame(func = String[], N = Int[], L = Int[], elapsed_time = Float64[])
               
+@info "batched_dot"
 N=32768
 for L=[32, 64, 128, 256]
+    @info string("N=", N, "; L=", L)
     times = doit(L, N)
     push!(df_b_dot, ("bgemm", N, L, times[1]))
     push!(df_b_dot, ("bdot",  N, L, times[2]))
@@ -36,6 +36,7 @@ end
 
 L=128
 for N=[8192, 16384, 65536, 131072]
+    @info string("N=", N, "; L=", L)
     times = doit(L, N)
     push!(df_b_dot, ("bgemm", N, L, times[1]))
     push!(df_b_dot, ("bdot",  N, L, times[2]))
@@ -64,15 +65,17 @@ function doit(L,N)
     tbspmvl = @belapsed_median CUDA.@sync batched_spmv!('L', 1.0, $AP, $x2, 0.0, $y2)
 
     CUDA.unsafe_free!.((A3, AP, x2, x3, y2, y3))
-    CUDA.memory_status();  println("\n")
+    CUDA.memory_status()
 
     return tbgemm, tbgemvn, tbgemvt, tbsymvu, tbsymvl, tbspmvu, tbspmvl
 end
 
 df_b_mv = DataFrame(func = String[], N = Int[], L = Int[], elapsed_time = Float64[])
               
+@info "batched_{gemv,symv,spmv}"
 N=32768
 for L=[32, 64, 128, 256]
+    @info string("N=", N, "; L=", L)
     times = doit(L, N)
     push!(df_b_mv, ("bgemm",  N, L, times[1]))
     push!(df_b_mv, ("bgemvn", N, L, times[2]))
@@ -85,6 +88,7 @@ end
 
 L=128
 for N=[8192, 16384, 65536, 131072]
+    @info string("N=", N, "; L=", L)
     times = doit(L, N)
     push!(df_b_mv, ("bgemm",  N, L, times[1]))
     push!(df_b_mv, ("bgemvn", N, L, times[2]))
@@ -117,15 +121,17 @@ function doit(L,N)
     tbsprl = @belapsed_median CUDA.@sync batched_spr!('L', -1.0, $x2, $AP)
 
     CUDA.unsafe_free!.((A3, AP, x2, x3, y2, y3))
-    CUDA.memory_status();  println("\n")
+    CUDA.memory_status()
 
     return tbgemm, tbger, tbsyru, tbsyrl, tbspru, tbsprl
 end
 
 df_b_r = DataFrame(func = String[], N = Int[], L = Int[], elapsed_time = Float64[])
               
+@info "batched_{ger,syr,spr}"
 N=32768
 for L=[32, 64, 128, 256]
+    @info string("N=", N, "; L=", L)
     times = doit(L, N)
     push!(df_b_r, ("bgemm", N, L, times[1]))
     push!(df_b_r, ("bger",  N, L, times[2]))
@@ -137,6 +143,7 @@ end
 
 L=128
 for N=[8192, 16384, 65536, 131072]
+    @info string("N=", N, "; L=", L)
     times = doit(L, N)
     push!(df_b_r, ("bgemm", N, L, times[1]))
     push!(df_b_r, ("bger",  N, L, times[2]))

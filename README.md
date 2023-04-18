@@ -11,7 +11,7 @@ and `spr` are faster than the equivalent batched `gemm`.  Benchmarks on an
 A100 follow.  The dashed lines are for the transposed version of `gemv` and
 the upper-triangle versions of all other functions.  Lower numbers are better.
 
-![benchmarks](/test/bench.svg)
+![benchmarks](/bench/bench.svg)
 
 Example usage:
 
