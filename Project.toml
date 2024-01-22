@@ -1,7 +1,7 @@
 name = "BatchedBLAS"
 uuid = "dfa6e8bd-ffa5-4347-817a-aa08eb84b250"
 authors = ["Ben Arthur <arthurb@hhmi.org>"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
