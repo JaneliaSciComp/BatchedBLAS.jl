@@ -5,11 +5,12 @@ can only be scalars.  BatchedBLAS.jl extends support for batched arrays by
 `ger`, `syr`, and `spr` that work with arrays of AbstractFloats and Integers,
 and scaling coefficients which can be scalars or Vectors.
 
-In addition to the type flexibility, there is a performance benefit for
-symmetric and packed symmetric matrices, where execution times for `syr`
-and `spr` are faster than the equivalent batched `gemm`.  Benchmarks on an
-A100 follow.  The dashed lines are for the transposed version of `gemv` and
-the upper-triangle versions of all other functions.  Lower numbers are better.
+In addition to the type flexibility, there is a performance benefit for rank-1
+updates as execution times for `ger`, `syr`, and `spr` are faster than the
+equivalent batched `gemm` for the range of parameters tested.  `dot` is also
+faster for small matrices.  Benchmarks on an H100 follow.  The dashed lines are
+for the transposed version of `gemv` and the upper-triangle versions of all
+other functions.  Lower numbers are better.
 
 ![benchmarks](/bench/bench.svg)
 

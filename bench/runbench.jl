@@ -1,5 +1,5 @@
 using LinearAlgebra, BatchedBLAS, NNlib, SymmetricFormats, BenchmarkTools, DataFrames, Gadfly, JLD2
-using KernelAbstractions, CUDA, NNlibCUDA
+using KernelAbstractions, CUDA
 
 macro belapsed_median(args...)
     esc(:(time(median(@benchmark $(args...))) / 1e9))
