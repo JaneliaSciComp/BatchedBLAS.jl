@@ -69,12 +69,12 @@ test_types = (Float64, Int32)
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
             thisbeta = Tbeta<:Vector ? beta_vector[i] : beta_scalar
-            spmv!(uplo, thisalpha, APU[:,i], x[:,i], thisbeta, @view y_cpu[:,i])
+            spmv!(uplo, thisalpha, (uplo=='U' ? APU : APL)[:,i], x[:,i], thisbeta, @view y_cpu[:,i])
         end
         y_gpu=copy(cuy);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
         thisbeta = Tbeta<:Vector ? cubeta_vector : beta_scalar
-        batched_spmv!(uplo, thisalpha, cuAPU, cux, thisbeta, y_gpu)
+        batched_spmv!(uplo, thisalpha, (uplo=='U' ? cuAPU : cuAPL), cux, thisbeta, y_gpu)
         test_equality(Ty, y_cpu, Array(y_gpu))
     end
 
@@ -101,15 +101,15 @@ test_types = (Float64, Int32)
         batched_syr!(uplo, thisalpha, cux, A_gpu)
         test_equality(TAo, A_cpu, Array(A_gpu))
 
-        APU_cpu=copy(APU);
+        AP_cpu=copy(uplo=='U' ? APU : APL);
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
-            spr!(uplo, thisalpha, x[:,i], @view APU_cpu[:,i])
+            spr!(uplo, thisalpha, x[:,i], @view AP_cpu[:,i])
         end
-        APU_gpu=copy(cuAPU);
+        AP_gpu=copy(uplo=='U' ? cuAPU : cuAPL);
         thisalpha = Talpha<:Vector ? cualpha_vector : alpha_scalar
-        batched_spr!(uplo, thisalpha, cux, APU_gpu)
-        test_equality(TAo, APU_cpu, Array(APU_gpu))
+        batched_spr!(uplo, thisalpha, cux, AP_gpu)
+        test_equality(TAo, AP_cpu, Array(AP_gpu))
     end
 
 end
