@@ -44,6 +44,9 @@ test_types = (Float64, Int32)
         o_gpu=copy(cuo);
         @views batched_dot!(o_gpu[2:end-1], cux[2:end-1,2:end-1], cuy[2:end-1,2:end-1])
         test_equality(TAo, o_cpu[2:end-1], o_gpu[2:end-1])
+
+        @test_throws DimensionMismatch @views batched_dot!(o_gpu[2:end], cux, cuy)
+        @test_throws DimensionMismatch batched_dot!(o_gpu, cux[2:end,:], cuy)
     end
 
     @testset "gemv!" for trans in ('N', 'T', 'C')
@@ -71,6 +74,9 @@ test_types = (Float64, Int32)
         @views batched_gemv!(trans, thisalpha, cuA[2:end-1,2:end-1,2:end-1], cux[2:end-1,2:end-1],
                              thisbeta, y_gpu[2:end-1,2:end-1])
         test_equality(Ty, y_cpu[2:end-1,2:end-1], Array(y_gpu[2:end-1,2:end-1]))
+
+        @test_throws DimensionMismatch batched_gemv!(trans, thisalpha, cuA[:,:,2:end], cux, thisbeta, y_gpu)
+        @test_throws DimensionMismatch batched_gemv!(trans, thisalpha, cuA, cux[2:end,:], thisbeta, y_gpu)
     end
 
     @testset "symv!" for uplo in ('U', 'L')
@@ -98,6 +104,9 @@ test_types = (Float64, Int32)
         @views batched_symv!(uplo, thisalpha, cuA[2:end-1,2:end-1,2:end-1], cux[2:end-1,2:end-1],
                              thisbeta, y_gpu[2:end-1,2:end-1])
         test_equality(Ty, y_cpu[2:end-1,2:end-1], Array(y_gpu[2:end-1,2:end-1]))
+
+        @test_throws DimensionMismatch batched_symv!(uplo, thisalpha, cuA[:,:,2:end], cux, thisbeta, y_gpu)
+        @test_throws DimensionMismatch batched_symv!(uplo, thisalpha, cuA, cux[2:end,:], thisbeta, y_gpu)
     end
 
     @testset "spmv!" for uplo in ('U', 'L')
@@ -128,6 +137,9 @@ test_types = (Float64, Int32)
         @views batched_spmv!(uplo, thisalpha, cuAP[:,2:end-1], cux[2:end-1,2:end-1],
                              thisbeta, y_gpu[2:end-1,2:end-1])
         test_equality(Ty, y_cpu[2:end-1,2:end-1], Array(y_gpu[2:end-1,2:end-1]))
+
+        @test_throws DimensionMismatch batched_spmv!(uplo, thisalpha, cuAP[:,2:end], cux, thisbeta, y_gpu)
+        @test_throws DimensionMismatch batched_spmv!(uplo, thisalpha, cuAP, cux[2:end,:], thisbeta, y_gpu)
     end
 
     @testset "ger!" begin
@@ -150,6 +162,9 @@ test_types = (Float64, Int32)
         thisalpha = Talpha<:Vector ? cualpha_vector[2:end-1] : alpha_scalar
         @views batched_ger!(thisalpha, cux[2:end-1,2:end-1], cuy[2:end-1,2:end-1], A_gpu[2:end-1,2:end-1,2:end-1])
         test_equality(TAo, A_cpu[2:end-1,2:end-1,2:end-1], Array(A_gpu[2:end-1,2:end-1,2:end-1]))
+
+        @test_throws DimensionMismatch @views batched_ger!(thisalpha, cux, cuy, A_gpu[:,:,2:end])
+        @test_throws DimensionMismatch batched_ger!(thisalpha, cux[2:end,:], cuy, A_gpu)
     end
 
     @testset "syr!" for uplo in ('U', 'L')
@@ -172,6 +187,9 @@ test_types = (Float64, Int32)
         thisalpha = Talpha<:Vector ? cualpha_vector[2:end-1] : alpha_scalar
         @views batched_syr!(uplo, thisalpha, cux[2:end-1,2:end-1], A_gpu[2:end-1,2:end-1,2:end-1])
         test_equality(TAo, A_cpu, Array(A_gpu))
+
+        @test_throws DimensionMismatch @views batched_syr!(uplo, thisalpha, cux, A_gpu[:,:,2:end])
+        @test_throws DimensionMismatch batched_syr!(uplo, thisalpha, cux[2:end,:], A_gpu)
     end
 
     @testset "spr!" for uplo in ('U', 'L')
@@ -196,6 +214,9 @@ test_types = (Float64, Int32)
         thisalpha = Talpha<:Vector ? cualpha_vector[2:end-1] : alpha_scalar
         @views batched_spr!(uplo, thisalpha, cux[2:end-1,2:end-1], AP_gpu[:,2:end-1])
         test_equality(TAo, hcat([x.tri for x in AP_cpu]...), Array(AP_gpu))
+
+        @test_throws DimensionMismatch @views batched_spr!(uplo, thisalpha, cux, AP_gpu[:,2:end])
+        @test_throws DimensionMismatch batched_spr!(uplo, thisalpha, cux[2:end,:], AP_gpu)
     end
 
 end

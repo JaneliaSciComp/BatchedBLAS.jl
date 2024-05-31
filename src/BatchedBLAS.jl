@@ -50,6 +50,13 @@ function _batched_dot!(::Type{<:CuArray},
                        o::AbstractArray{To,1}, x::AbstractArray{Tx,2}, y::AbstractArray{Ty,2}) where {
                        To<:IntOrFloat, Tx<:IntOrFloat, Ty<:IntOrFloat}
 
+    allequal((length(o), size(x,2), size(y,2))) ||
+            throw(DimensionMismatch("Last dimension of `o`, `x`, and `y` must be the same length!  \
+                                     size(o)==$(size(o)), size(x)==$(size(x)), size(y)==$(size(y))"))
+    size(x,1) == size(y,1) ||
+            throw(DimensionMismatch("First dimension of `x` and `y` must be the same length!  \
+                                     size(x)==$(size(x)), size(y)==$(size(y))"))
+
     function kernel(::Type{T}, o, x, y) where T
         k = threadIdx().x + (blockIdx().x - 1) * blockDim().x
 
@@ -91,6 +98,13 @@ function _batched_gemv!(::Type{<:CuArray},
                             TA<:IntOrFloat, Tx<:IntOrFloat,
                             Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                             Ty<:IntOrFloat}
+
+    allequal((size(A,3), size(x,2), size(y,2))) ||
+            throw(DimensionMismatch("Last dimension of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+    allequal((size(A,1), size(A,2), size(x,1), size(y,1))) ||
+            throw(DimensionMismatch("Leading dimensions of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
 
     function kernel(::Type{T}, tA, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -162,6 +176,13 @@ function _batched_symv!(::Type{<:CuArray},
                             Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                             Ty<:IntOrFloat}
 
+    allequal((size(A,3), size(x,2), size(y,2))) ||
+            throw(DimensionMismatch("Last dimension of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+    allequal((size(A,1), size(A,2), size(x,1), size(y,1))) ||
+            throw(DimensionMismatch("Leading dimensions of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+
     function kernel(::Type{T}, uplo, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         k = threadIdx().y + (blockIdx().y - 1) * blockDim().y
@@ -224,6 +245,13 @@ function _batched_spmv!(::Type{<:CuArray},
                             Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                             Ty<:IntOrFloat}
 
+    allequal((size(A,2), size(x,2), size(y,2))) ||
+            throw(DimensionMismatch("Last dimension of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+    size(x,1) == size(y,1) && size(A,1) == (size(x,1)*(size(x,1)+1))>>1 ||
+            throw(DimensionMismatch("Leading dimensions of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+
     function kernel(::Type{T}, uplo, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         k = threadIdx().y + (blockIdx().y - 1) * blockDim().y
@@ -282,6 +310,13 @@ function _batched_ger!(::Type{<:CuArray},
                            Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                            Tx<:IntOrFloat, Ty<:IntOrFloat, TA<:IntOrFloat}
 
+    allequal((size(A,3), size(x,2), size(y,2))) ||
+            throw(DimensionMismatch("Last dimension of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+    allequal((size(A,1), size(A,2), size(x,1), size(y,1))) ||
+            throw(DimensionMismatch("Leading dimensions of `A`, `x`, and `y` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x)), size(y)==$(size(y))"))
+
     function kernel(alpha, x, y, A)
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         k = threadIdx().y + (blockIdx().y - 1) * blockDim().y
@@ -317,6 +352,13 @@ function _batched_syr!(::Type{<:CuArray},
                        alpha::Talpha, x::AbstractArray{Tx,2}, A::AbstractArray{TA,3}) where {
                            Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                            Tx<:IntOrFloat, TA<:IntOrFloat}
+
+    size(A,3) == size(x,2) ||
+            throw(DimensionMismatch("Last dimension of `A` and `x` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x))"))
+    allequal((size(A,1), size(A,2), size(x,1))) ||
+            throw(DimensionMismatch("Leading dimensions of `A` and `x` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x))"))
 
     function kernel(uplo, alpha, x, A)
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -366,6 +408,13 @@ function _batched_spr!(::Type{<:CuArray},
                        alpha::Talpha, x::AbstractArray{Tx,2}, A::AbstractArray{TA,2}) where {
                            Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
                            Tx<:IntOrFloat, TA<:IntOrFloat}
+
+    size(A,2) == size(x,2) ||
+            throw(DimensionMismatch("Last dimension of `A` and `x` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x))"))
+    size(A,1) == (size(x,1)*(size(x,1)+1))>>1 ||
+            throw(DimensionMismatch("Leading dimensions of `A` and `x` must be the same length!  \
+                                     size(A)==$(size(A)), size(x)==$(size(x))"))
 
     function kernel(uplo, alpha, x, A)
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
