@@ -27,15 +27,28 @@ function configurator(config, dim1, dim2)
     return (xthreads, ythreads), (xblocks, yblocks)
 end
 
+# from NNlib.jl
+function storage_type(A::AbstractArray)
+    P = parent(A)
+    typeof(A) === typeof(P) ? typeof(A) : storage_type(P)
+end
+storage_type(A) = typeof(A)
+storage_typejoin(A, Bs...) = Base.promote_typejoin(storage_type(A), storage_typejoin(Bs...))
+storage_typejoin(A) = storage_type(A)
+
 """
     batched_dot!(o, x, y)
 
-In-place batched vector-vector multiplication, equivalent to
-`o[k] = transpose(x[:,k]) * y[:,k]` for all `k`.  All inputs
-can have eltypes of either AbstractFloats or Integers.
+In-place batched vector-vector multiplication, equivalent to `o[k] =
+transpose(x[:,k]) * y[:,k]` for all `k`.  All inputs can have eltypes of either
+AbstractFloats or Integers.
 """
-function batched_dot!(o::CuVector{To}, x::CuMatrix{Tx}, y::CuMatrix{Ty}) where {
-                          To<:IntOrFloat, Tx<:IntOrFloat, Ty<:IntOrFloat}
+batched_dot!(o::AbstractVector, x::AbstractMatrix, y::AbstractMatrix) =
+        _batched_dot!(storage_typejoin(o,x,y), o, x, y)
+
+function _batched_dot!(::Type{<:CuArray},
+                       o::AbstractArray{To,1}, x::AbstractArray{Tx,2}, y::AbstractArray{Ty,2}) where {
+                       To<:IntOrFloat, Tx<:IntOrFloat, Ty<:IntOrFloat}
 
     function kernel(::Type{T}, o, x, y) where T
         k = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -60,19 +73,24 @@ end
 """
     batched_gemv!(tA, alpha, A, x, beta, y)
 
-In-place batched matrix-vector multiplication and addition, equivalent
-to `y[:,k] = alpha[k] * A[:,:,k] * x[:,k] + beta[k] * y[:,k]` for all
-`k`. `A` can optionally be transposed with `tA` as `N`, `T`, or `C`.
-All other inputs can have eltypes of either AbstractFloats or Integers.
-`alpha` and `beta` can also be scalars.
+In-place batched matrix-vector multiplication and addition, equivalent to
+`y[:,k] = alpha[k] * A[:,:,k] * x[:,k] + beta[k] * y[:,k]` for all `k`. `A` can
+optionally be transposed with `tA` as `N`, `T`, or `C`.  All other inputs
+can have eltypes of either AbstractFloats or Integers.  `alpha` and `beta` can
+also be scalars.
 """
-function batched_gemv!(tA::AbstractChar,
-                       alpha::Talpha, A::CuArray{TA,3}, x::CuMatrix{Tx},
-                       beta::Tbeta, y::CuMatrix{Ty}) where {
-                           Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                           TA<:IntOrFloat, Tx<:IntOrFloat,
-                           Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                           Ty<:IntOrFloat}
+batched_gemv!(tA::AbstractChar, alpha, A::AbstractArray, x::AbstractMatrix,
+              beta, y::AbstractMatrix) =
+        _batched_gemv!(storage_typejoin(A,x,y), tA, alpha, A, x, beta, y)
+
+function _batched_gemv!(::Type{<:CuArray},
+                        tA::AbstractChar,
+                        alpha::Talpha, A::AbstractArray{TA,3}, x::AbstractArray{Tx,2},
+                        beta::Tbeta, y::AbstractArray{Ty,2}) where {
+                            Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                            TA<:IntOrFloat, Tx<:IntOrFloat,
+                            Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                            Ty<:IntOrFloat}
 
     function kernel(::Type{T}, tA, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -125,18 +143,24 @@ end
     batched_symv!(uplo, alpha, A, x, beta, y)
 
 In-place batched matrix-vector multiplication and addition, equivalent to
-`y[:,k] = alpha[k] * A[:,:,k] * x[:,k] + beta[k] * y[:,k]` for all `k`.  `A`
-is assumed to be symmetric.  Only the `uplo` (either 'U' or 'L') triangle of
-`A` is used.  All other inputs can have eltypes of either AbstractFloats
-or Integers.  `alpha` and `beta` can also be scalars.
+`y[:,k] = alpha[k] * A[:,:,k] * x[:,k] + beta[k] * y[:,k]` for all `k`.  `A` is
+assumed to be symmetric.  Only the `uplo` (either 'U' or 'L') triangle of `A` is
+used.  All other inputs can have eltypes of either AbstractFloats or
+Integers.  `alpha` and `beta` can also be scalars.
 """
-function batched_symv!(uplo::AbstractChar,
-                       alpha::Talpha, A::CuArray{TA,3}, x::CuMatrix{Tx},
-                       beta::Tbeta, y::CuMatrix{Ty}) where {
-                           Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                           TA<:IntOrFloat, Tx<:IntOrFloat,
-                           Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                           Ty<:IntOrFloat}
+batched_symv!(uplo::AbstractChar,
+              alpha, A::AbstractArray, x::AbstractMatrix,
+              beta, y::AbstractMatrix) =
+        _batched_symv!(storage_typejoin(A,x,y), uplo, alpha, A, x, beta, y)
+
+function _batched_symv!(::Type{<:CuArray},
+                        uplo::AbstractChar,
+                        alpha::Talpha, A::AbstractArray{TA,3}, x::AbstractArray{Tx,2},
+                        beta::Tbeta, y::AbstractArray{Ty,2}) where {
+                            Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                            TA<:IntOrFloat, Tx<:IntOrFloat,
+                            Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                            Ty<:IntOrFloat}
 
     function kernel(::Type{T}, uplo, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -181,18 +205,24 @@ end
     batched_spmv!(ul, alpha, A, x, beta, y)
 
 In-place batched matrix-vector multiplication and addition, equivalent to
-`y[:,k] = alpha[k] * A[:,:,k] * x[:,k] + beta[k] * y[:,k]` for all `k`.
-`A` must be packed symmetric, and `uplo` specifies whether the upper ('U')
-or lower ('L') triangle was packed.  All other inputs can have eltypes of
-either AbstractFloats or Integers.  `alpha` and `beta` can also be scalars.
+`y[:,k] = alpha[k] * A[:,:,k] * x[:,k] + beta[k] * y[:,k]` for all `k`.  `A`
+must be packed symmetric, and `uplo` specifies whether the upper ('U') or lower
+('L') triangle was packed.  All other inputs can have eltypes of either
+AbstractFloats or Integers.  `alpha` and `beta` can also be scalars.
 """
-function batched_spmv!(uplo::AbstractChar,
-                       alpha::Talpha, A::CuMatrix{TA}, x::CuMatrix{Tx},
-                       beta::Tbeta, y::CuMatrix{Ty}) where {
-                         Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                         TA<:IntOrFloat, Tx<:IntOrFloat,
-                         Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                         Ty<:IntOrFloat}
+batched_spmv!(uplo::AbstractChar,
+              alpha, A::AbstractMatrix, x::AbstractMatrix,
+              beta, y::AbstractMatrix) =
+        _batched_spmv!(storage_typejoin(A,x,y), uplo, alpha, A, x, beta, y)
+
+function _batched_spmv!(::Type{<:CuArray},
+                        uplo::AbstractChar,
+                        alpha::Talpha, A::AbstractArray{TA,2}, x::AbstractArray{Tx,2},
+                        beta::Tbeta, y::AbstractArray{Ty,2}) where {
+                            Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                            TA<:IntOrFloat, Tx<:IntOrFloat,
+                            Tbeta<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                            Ty<:IntOrFloat}
 
     function kernel(::Type{T}, uplo, alpha, A, x, beta, y) where T
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -241,12 +271,16 @@ end
 
 In-place rank-1 update of matrix `A` with vectors `x` and `y` as
 `alpha[k] * x[:,k] * transpose(y[:,k]) + A[:,:,k]` for all `k`.  All
-nputs can have eltypes of either AbstractFloats or Integers.  `alpha`
+inputs can have eltypes of either AbstractFloats or Integers.  `alpha`
 can also be a scalar.
 """
-function batched_ger!(alpha::Talpha, x::CuMatrix{Tx}, y::CuMatrix{Ty}, A::CuArray{TA,3}) where {
-                          Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                          Tx<:IntOrFloat, Ty<:IntOrFloat, TA<:IntOrFloat}
+batched_ger!(alpha, x::AbstractMatrix, y::AbstractMatrix, A::AbstractArray) =
+        _batched_ger!(storage_typejoin(x,y,A), alpha, x, y, A)
+
+function _batched_ger!(::Type{<:CuArray},
+                       alpha::Talpha, x::AbstractArray{Tx,2}, y::AbstractArray{Ty,2}, A::AbstractArray{TA,3}) where {
+                           Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                           Tx<:IntOrFloat, Ty<:IntOrFloat, TA<:IntOrFloat}
 
     function kernel(alpha, x, y, A)
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -269,16 +303,20 @@ end
 """
     batched_syr!(uplo, alpha, x, A)
 
-In-place rank-1 update of symmetric matrix `A` with vector `x` as
-`alpha[k] * x[:,k] * transpose(x[:,k]) + A[:,:,k]` for all `k`.  `A` is
-assumed to be symmetric.  Only the `uplo` (either 'U' or 'L') triangle of
-`A` is used.  All other inputs can have eltypes of either AbstractFloats
-or Integers.  `alpha` can also be a scalar.
+In-place rank-1 update of symmetric matrix `A` with vector `x` as `alpha[k] *
+x[:,k] * transpose(x[:,k]) + A[:,:,k]` for all `k`.  `A` is assumed to be
+symmetric.  Only the `uplo` (either 'U' or 'L') triangle of `A` is used.  All
+other inputs can have eltypes of either AbstractFloats or Integers.  `alpha`
+can also be a scalar.
 """
-function batched_syr!(uplo::AbstractChar,
-                      alpha::Talpha, x::CuMatrix{Tx}, A::CuArray{TA,3}) where {
-                          Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                          Tx<:IntOrFloat, TA<:IntOrFloat}
+batched_syr!(uplo::AbstractChar, alpha, x::AbstractMatrix, A::AbstractArray) =
+        _batched_syr!(storage_typejoin(x,A), uplo, alpha, x, A)
+
+function _batched_syr!(::Type{<:CuArray},
+                       uplo::AbstractChar,
+                       alpha::Talpha, x::AbstractArray{Tx,2}, A::AbstractArray{TA,3}) where {
+                           Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                           Tx<:IntOrFloat, TA<:IntOrFloat}
 
     function kernel(uplo, alpha, x, A)
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -314,16 +352,20 @@ end
 """
     batched_spr!(uplo, alpha, x, A)
 
-In-place rank-1 update of packed symmetric matrix `A` with vector `x`
-as `alpha[k] * x[:,k] * transpose(x[:,k]) + A[:,:,k]` for all `k`.  `A`
-must be symmetric, and `uplo` specifies whether the upper ('U') or lower
-('L') triangle was packed.  All other inputs can have eltypes of either
-AbstractFloats or Integers.  `alpha` can also be a scalar.
+In-place rank-1 update of packed symmetric matrix `A` with vector `x` as
+`alpha[k] * x[:,k] * transpose(x[:,k]) + A[:,:,k]` for all `k`.  `A` must be
+symmetric, and `uplo` specifies whether the upper ('U') or lower ('L') triangle
+was packed.  All other inputs can have eltypes of either AbstractFloats or
+Integers.  `alpha` can also be a scalar.
 """
-function batched_spr!(uplo::AbstractChar,
-                      alpha::Talpha, x::CuMatrix{Tx}, A::CuMatrix{TA}) where {
-                          Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
-                          Tx<:IntOrFloat, TA<:IntOrFloat}
+batched_spr!(uplo::AbstractChar, alpha, x::AbstractMatrix, A::AbstractMatrix) =
+        _batched_spr!(storage_typejoin(x,A), uplo, alpha, x, A)
+
+function _batched_spr!(::Type{<:CuArray},
+                       uplo::AbstractChar,
+                       alpha::Talpha, x::AbstractArray{Tx,2}, A::AbstractArray{TA,2}) where {
+                           Talpha<:Union{IntOrFloat, CuVector{<:IntOrFloat}},
+                           Tx<:IntOrFloat, TA<:IntOrFloat}
 
     function kernel(uplo, alpha, x, A)
         i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
