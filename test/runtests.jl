@@ -28,7 +28,7 @@ test_types = (Float64, Int32)
     cuy = CuArray{Ty}(y)
     cuo = CuArray{TAo}(o)
 
-    @testset "dot!" begin
+    allequal((Talpha, Tbeta, test_types[1])) && @testset "dot!" begin
         o_cpu=copy(o);
         @views for i=1:N
             @views o_cpu[i] = dot(x[:,i], y[:,i])
@@ -142,7 +142,7 @@ test_types = (Float64, Int32)
         @test_throws DimensionMismatch batched_spmv!(uplo, thisalpha, cuAP, cux[2:end,:], thisbeta, y_gpu)
     end
 
-    @testset "ger!" begin
+    allequal((Tbeta, test_types[1])) && @testset "ger!" begin
         A_cpu=copy(A);
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
@@ -167,7 +167,7 @@ test_types = (Float64, Int32)
         @test_throws DimensionMismatch batched_ger!(thisalpha, cux[2:end,:], cuy, A_gpu)
     end
 
-    @testset "syr!" for uplo in ('U', 'L')
+    allequal((Tbeta, test_types[1])) && @testset "syr!" for uplo in ('U', 'L')
         A_cpu=copy(A);
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
@@ -192,7 +192,7 @@ test_types = (Float64, Int32)
         @test_throws DimensionMismatch batched_syr!(uplo, thisalpha, cux[2:end,:], A_gpu)
     end
 
-    @testset "spr!" for uplo in ('U', 'L')
+    allequal((Tbeta, test_types[1])) && @testset "spr!" for uplo in ('U', 'L')
         AP_cpu=deepcopy(uplo=='U' ? APU : APL);
         for i=1:N
             thisalpha = Talpha<:Vector ? alpha_vector[i] : alpha_scalar
