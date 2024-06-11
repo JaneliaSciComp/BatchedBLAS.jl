@@ -1,6 +1,10 @@
 using LinearAlgebra, BatchedBLAS, NNlib, SymmetricFormats, BenchmarkTools, DataFrames, Gadfly, JLD2
 using KernelAbstractions, CUDA
 
+# https://discourse.julialang.org/t/kernelabstractions-get-backend-keyword-arguments/97895
+import CUDA: CUDABackend
+CUDABackend(; prefer_blocks=true, always_inline=false) = CUDABackend(prefer_blocks, always_inline)
+
 macro belapsed_median(args...)
     esc(:(time(median(@benchmark $(args...))) / 1e9))
 end
